@@ -4,7 +4,7 @@
 ## Bash
 ```html
 curl -sL https://raw.githubusercontent.com/enver-isliamov/my-vpn-stack/main/setup.sh | bash
-</div>
+
 ```
 
 ## Почему это *«идеальное»* решение:
