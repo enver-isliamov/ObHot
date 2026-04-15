@@ -1,7 +1,7 @@
 #!/bin/bash
 # ВАШИ НАСТРОЙКИ (обязательно измените)
-GITHUB_USER="ВАШ_ЛОГИН"
-REPO_NAME="my-vpn-stack"
+GITHUB_USER="enver-isliamov"
+REPO_NAME="ObHot"
 
 # 1. Ускорение сети (BBR)
 echo -e "net.core.default_qdisc=fq\nnet.ipv4.tcp_congestion_control=bbr" >> /etc/sysctl.conf
