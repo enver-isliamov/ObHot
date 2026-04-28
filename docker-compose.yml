@@ -1,5 +1,5 @@
 services:
-  3x-ui:
+  vpn-panel:
     image: ghcr.io/mhsanaei/3x-ui:latest
     container_name: 3x-ui
     volumes:
@@ -10,7 +10,7 @@ services:
     network_mode: host
     restart: unless-stopped
 
-  nginx:
+  web-mask:
     image: nginx:latest
     container_name: nginx
     volumes:
@@ -19,4 +19,21 @@ services:
       - "80:80"
     restart: unless-stopped
 
-  # Другие сервисы (AdGuard, MTProto) добавляются сюда же
+  adguard:
+    image: adguard/adguardhome:latest
+    container_name: adguardhome
+    network_mode: host
+    volumes:
+      -./adguard/work:/opt/adguardhome/work
+      -./adguard/conf:/opt/adguardhome/conf
+    restart: unless-stopped
+
+  mtproto:
+    image: telegrammessenger/proxy:latest
+    container_name: mtproto
+    ports:
+      - "9443:443"
+    environment:
+      - SECRET=MT_SECRET_PLACEHOLDER
+      - TAG=proxy
+    restart: always
