@@ -19,6 +19,7 @@ apt update && apt install nginx docker.io sqlite3 git curl -y
 # 4. Клонирование вашего сайта с GitHub
 # Мы скачиваем только папку website из вашего репозитория
 rm -rf /var/www/html/*
+rm -rf /tmp/vpn-repo
 git clone https://github.com/$GITHUB_USER/$REPO_NAME.git /tmp/vpn-repo
 cp -r /tmp/vpn-repo/website/* /var/www/html/
 chown -R www-data:www-data /var/www/html
@@ -32,8 +33,12 @@ rm -f "$TMP_XUI_INSTALLER"
 
 # Явно приводим панель к ожидаемым настройкам
 if command -v x-ui >/dev/null 2>&1; then
-  x-ui setting -username admin -password admin -port 2053 || true
-  x-ui restart || true
+  if x-ui setting -username admin -password admin -port 2053; then
+    x-ui restart || true
+  else
+    echo "[WARN] Не удалось автоматически применить admin/admin:2053. Ниже текущие настройки панели:"
+    x-ui settings || x-ui setting -show || true
+  fi
 fi
 
 # 6. Программное создание первого Reality-ключа (Порт 443)
@@ -51,7 +56,7 @@ fi
 
 if [ -n "$XRAY_BIN" ] && [ -f /etc/x-ui/x-ui.db ]; then
   KEYS=$($XRAY_BIN x25519)
-  PRIV_KEY=$(echo "$KEYS" | grep "Private" | awk '{print $3}')
+  PRIV_KEY=$(echo "$KEYS" | sed -n "s/.*[Pp]rivate[^:]*:[[:space:]]*//p" | head -n1 | tr -d "\r")
 
   if [ -n "$PRIV_KEY" ]; then
     sqlite3 /etc/x-ui/x-ui.db <<SQL
@@ -71,13 +76,21 @@ fi
 x-ui start || true
 
 # 7. AdGuard Home (Автоматическая установка)
-curl -s -S -L https://raw.githubusercontent.com/AdguardTeam/AdGuardHome/master/scripts/install.sh | sh -s -- -v
+curl -s -S -L https://raw.githubusercontent.com/AdguardTeam/AdGuardHome/master/scripts/install.sh | sh -s -- -v -r
 
 # 8. Telegram MTProto Proxy (Docker)
+if docker ps -a --format "{{.Names}}" | grep -qx mtproto; then
+  docker rm -f mtproto || true
+fi
 docker run -d --name mtproto -p 9443:443 -e SECRET=$(openssl rand -hex 16) -e TAG=proxy --restart always telegrammessenger/proxy:latest
 
 # 9. Firewall (Открываем порты)
 ufw allow 22,80,443,2053,3000,8443,9443/tcp
 ufw --force enable
+
+echo "Текущие настройки x-ui (если установлена):"
+if command -v x-ui >/dev/null 2>&1; then
+  x-ui settings || x-ui setting -show || true
+fi
 
 echo "ГОТОВО! Ваш сайт-маскировка и VPN развернуты."
