@@ -24,8 +24,11 @@ cp -r /tmp/vpn-repo/website/* /var/www/html/
 chown -R www-data:www-data /var/www/html
 systemctl restart nginx
 
-# 5. Установка 3x-ui (без хрупкого интерактивного heredoc)
-bash <(curl -Ls https://raw.githubusercontent.com/mhsanaei/3x-ui/master/install.sh)
+# 5. Установка 3x-ui (через временный файл, чтобы инсталлятор не "съел" stdin у основного скрипта)
+TMP_XUI_INSTALLER=$(mktemp)
+curl -fsSL https://raw.githubusercontent.com/mhsanaei/3x-ui/master/install.sh -o "$TMP_XUI_INSTALLER"
+bash "$TMP_XUI_INSTALLER" < /dev/null
+rm -f "$TMP_XUI_INSTALLER"
 
 # Явно приводим панель к ожидаемым настройкам
 if command -v x-ui >/dev/null 2>&1; then
