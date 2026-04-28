@@ -21,7 +21,7 @@ apt update && apt install nginx docker.io sqlite3 git curl -y
 rm -rf /var/www/html/*
 git clone https://github.com/$GITHUB_USER/$REPO_NAME.git /tmp/vpn-repo
 cp -r /tmp/vpn-repo/website/* /var/www/html/
-chown -r www-data:www-data /var/www/html
+chown -R www-data:www-data /var/www/html
 systemctl restart nginx
 
 # 5. Установка 3x-ui (Порт 2053, логин admin, пароль admin)
