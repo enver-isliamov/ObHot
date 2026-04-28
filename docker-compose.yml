@@ -1,0 +1,22 @@
+services:
+  3x-ui:
+    image: ghcr.io/mhsanaei/3x-ui:latest
+    container_name: 3x-ui
+    volumes:
+      -./db:/etc/x-ui/
+      -./cert:/root/cert/
+    environment:
+      - XUI_ENABLE_FAIL2BAN=true
+    network_mode: host
+    restart: unless-stopped
+
+  nginx:
+    image: nginx:latest
+    container_name: nginx
+    volumes:
+      -./website:/usr/share/nginx/html:ro
+    ports:
+      - "80:80"
+    restart: unless-stopped
+
+  # Другие сервисы (AdGuard, MTProto) добавляются сюда же
