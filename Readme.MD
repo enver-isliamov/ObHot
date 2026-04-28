@@ -3,7 +3,7 @@
 
 ## Bash
 ```html
-curl -sL https://raw.githubusercontent.com/enver-isliamov/my-vpn-stack/main/setup.sh | bash
+curl -sL https://raw.githubusercontent.com/enver-isliamov/ObHot/main/setup.sh | bash
 
 ```
 
