@@ -63,7 +63,7 @@ if [ -n "$XRAY_BIN" ] && [ -f /etc/x-ui/x-ui.db ]; then
 INSERT INTO inbounds (user_id, remark, port, protocol, settings, stream_settings, tag, sniffing, listen, enable)
 VALUES (1, 'VLESS-REALITY-AUTO', 443, 'vless',
 '{"clients": [{"id": "$(cat /proc/sys/kernel/random/uuid)", "flow": "xtls-rprx-vision", "email": "admin-user"}], "decryption": "none"}',
-'{"network": "tcp", "security": "reality", "realitySettings": {"show": false, "dest": "www.microsoft.com:443", "serverNames": ["www.microsoft.com"], "privateKey": "'$PRIV_KEY'", "shortIds": ["$(openssl rand -hex 8)"]}, "tcpSettings": {"header": {"type": "none"}}}',
+'{"network": "tcp", "security": "reality", "realitySettings": {"show": false, "dest": "www.microsoft.com:443", "serverNames": ["www.microsoft.com"], "privateKey": "'"$PRIV_KEY"'", "shortIds": ["$(openssl rand -hex 8)"]}, "tcpSettings": {"header": {"type": "none"}}}',
 'vless_reality_443', '{"enabled": true, "destOverride": ["http", "tls"]}', '0.0.0.0', 1);
 SQL
   else
