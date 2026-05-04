@@ -1,5 +1,5 @@
 #!/bin/bash
-# ВАШИ НАСТРОЙКИ (обязательно измените)
+# ВАШИ НАСТРОЙКИ
 GITHUB_USER="enver-isliamov"
 REPO_NAME="ObHot"
 
@@ -7,17 +7,16 @@ REPO_NAME="ObHot"
 echo -e "net.core.default_qdisc=fq\nnet.ipv4.tcp_congestion_control=bbr" >> /etc/sysctl.conf
 sysctl -p
 
-# 2. Лимиты на CPU для системных обновлений
+# 2. Лимиты на CPU (30%)
 mkdir -p /etc/systemd/system/apt-daily.service.d /etc/systemd/system/apt-daily-upgrade.service.d
-printf "\nCPUQuota=30%%" > /etc/systemd/system/apt-daily.service.d/override.conf
-printf "\nCPUQuota=30%%" > /etc/systemd/system/apt-daily-upgrade.service.d/override.conf
+printf "[Service]\nCPUQuota=30%%" > /etc/systemd/system/apt-daily.service.d/override.conf
+printf "[Service]\nCPUQuota=30%%" > /etc/systemd/system/apt-daily-upgrade.service.d/override.conf
 systemctl daemon-reload
 
-# 3. Установка окружения (Nginx, Docker, SQLite, Git)
+# 3. Установка окружения
 apt update && apt install nginx docker.io sqlite3 git curl -y
 
-# 4. Клонирование вашего сайта с GitHub
-# Мы скачиваем только папку website из вашего репозитория
+# 4. Клонирование сайта
 rm -rf /var/www/html/*
 rm -rf /tmp/vpn-repo
 git clone https://github.com/$GITHUB_USER/$REPO_NAME.git /tmp/vpn-repo
@@ -25,95 +24,66 @@ cp -r /tmp/vpn-repo/website/* /var/www/html/
 chown -R www-data:www-data /var/www/html
 systemctl restart nginx
 
-# 5. Установка 3x-ui (через временный файл, чтобы инсталлятор не "съел" stdin у основного скрипта)
+# 5. Установка 3x-ui
 TMP_XUI_INSTALLER=$(mktemp)
 curl -fsSL https://raw.githubusercontent.com/mhsanaei/3x-ui/master/install.sh -o "$TMP_XUI_INSTALLER"
 bash "$TMP_XUI_INSTALLER" < /dev/null
 rm -f "$TMP_XUI_INSTALLER"
 
-# Явно приводим панель к ожидаемым настройкам
+# Настройка доступа к панели
 if command -v x-ui >/dev/null 2>&1; then
-  if x-ui setting -username admin -password admin -port 2053; then
-    x-ui restart || true
-  else
-    echo "[WARN] Не удалось автоматически применить admin/admin:2053. Ниже текущие настройки панели:"
-    x-ui settings || x-ui setting -show || true
-  fi
+  # Используем флаги -u и -p для установки админа
+  x-ui setting -u admin -p admin -port 2053
+  x-ui restart || true
 fi
 
-# 6. Программное создание первого Reality-ключа (Порт 443)
+# 6. Создание Reality-ключа (Порт 443)
 sleep 5
 x-ui stop || true
 
-XRAY_BIN=""
-if [ -x /usr/local/x-ui/bin/xray ]; then
-  XRAY_BIN="/usr/local/x-ui/bin/xray"
-elif [ -x /usr/local/x-ui/bin/xray-linux-amd64 ]; then
-  XRAY_BIN="/usr/local/x-ui/bin/xray-linux-amd64"
-elif command -v xray >/dev/null 2>&1; then
-  XRAY_BIN="$(command -v xray)"
-fi
+XRAY_BIN="/usr/local/x-ui/bin/xray"
+[ ! -f "$XRAY_BIN" ] && XRAY_BIN="/usr/local/x-ui/bin/xray-linux-amd64"
 
-if [ -n "$XRAY_BIN" ] && [ -f /etc/x-ui/x-ui.db ]; then
+if [ -f "$XRAY_BIN" ] && [ -f /etc/x-ui/x-ui.db ]; then
+  # Генерация ключей и параметров
   KEYS=$($XRAY_BIN x25519)
   PRIV_KEY=$(echo "$KEYS" | sed -n "s/.*[Pp]rivate[^:]*:[[:space:]]*//p" | head -n1 | tr -d "\r")
+  UUID=$(cat /proc/sys/kernel/random/uuid)
+  SHORT_ID=$(openssl rand -hex 8)
 
   if [ -n "$PRIV_KEY" ]; then
     sqlite3 /etc/x-ui/x-ui.db <<SQL
 INSERT INTO inbounds (user_id, remark, port, protocol, settings, stream_settings, tag, sniffing, listen, enable)
 VALUES (1, 'VLESS-REALITY-AUTO', 443, 'vless',
-'{"clients": [{"id": "$(cat /proc/sys/kernel/random/uuid)", "flow": "xtls-rprx-vision", "email": "admin-user"}], "decryption": "none"}',
-'{"network": "tcp", "security": "reality", "realitySettings": {"show": false, "dest": "www.microsoft.com:443", "serverNames": ["www.microsoft.com"], "privateKey": "'"$PRIV_KEY"'", "shortIds": ["$(openssl rand -hex 8)"]}, "tcpSettings": {"header": {"type": "none"}}}',
+'{"clients": [{"id": "$UUID", "flow": "xtls-rprx-vision", "email": "admin-user"}], "decryption": "none"}',
+'{"network": "tcp", "security": "reality", "realitySettings": {"show": false, "dest": "www.microsoft.com:443", "serverNames": ["www.microsoft.com"], "privateKey": "$PRIV_KEY", "shortIds": ["$SHORT_ID"]}, "tcpSettings": {"header": {"type": "none"}}}',
 'vless_reality_443', '{"enabled": true, "destOverride": ["http", "tls"]}', '0.0.0.0', 1);
 SQL
-  else
-    echo "[WARN] Не удалось извлечь приватный ключ x25519, пропускаем авто-добавление inbound."
   fi
-else
-  echo "[WARN] xray/bin или /etc/x-ui/x-ui.db не найден, пропускаем авто-добавление inbound."
 fi
-
 x-ui start || true
 
-
-
-# 7. AdGuard Home (Автоматическая установка)
-echo "Освобождаем порт 53 для AdGuard Home..."
+# 7. AdGuard Home
+echo "Освобождаем порт 53..."
 systemctl stop systemd-resolved
 systemctl disable systemd-resolved
 rm -f /etc/resolv.conf
-echo 'nameserver 8.8.8.8' > /etc/resolv.conf
-echo 'nameserver 1.1.1.1' >> /etc/resolv.conf
+printf "nameserver 8.8.8.8\nnameserver 1.1.1.1" > /etc/resolv.conf
+# Блокируем файл от изменений системой
+chattr +i /etc/resolv.conf 2>/dev/null || true
+
 curl -s -S -L https://raw.githubusercontent.com/AdguardTeam/AdGuardHome/master/scripts/install.sh | sh -s -- -v -r
 
-# 8. Telegram MTProto Proxy (Docker)
-if docker ps -a --format "{{.Names}}" | grep -qx mtproto; then
-  docker rm -f mtproto || true
-fi
+# 8. MTProto Proxy
 docker run -d --name mtproto -p 9443:443 -e SECRET=$(openssl rand -hex 16) -e TAG=proxy --restart always telegrammessenger/proxy:latest
 
-# 9. Firewall (Открываем порты)
+# 9. Firewall (Безопасный порядок)
 echo "Настраиваем правила UFW..."
+ufw allow 22/tcp
+ufw allow 80,443,2022,2053,2096,2443,3000,8443,9443/tcp
+ufw allow 443,2022,2053,2443/udp
 ufw --force enable
-ufw allow 80/tcp
-ufw allow 443/tcp
-ufw allow 443/udp
-ufw allow 2096/tcp # Порт для ссылок подписки
-# Порты для ваших Reality-подключений:
-ufw allow 2022,2053,2443/tcp
-ufw allow 2022,2053,2443/udp
 ufw reload
-ufw allow 22,80,443,2053,3000,8443,9443/tcp
-ufw --force enable
 
-echo "Текущие настройки x-ui (если установлена):"
-if command -v x-ui >/dev/null 2>&1; then
-  x-ui settings || x-ui setting -show || true
-fi
-
-echo "Генерация SSL сертификата..."
-systemctl stop nginx # Останавливаем Nginx, чтобы освободить 80 порт
-# ... здесь ваш код вызова acme.sh ...
-systemctl start nginx # Запускаем Nginx обратно
-
-echo "ГОТОВО! Ваш сайт-маскировка и VPN развернуты."
+echo "ГОТОВО! Ваш сайт и VPN развернуты."
+x-ui settings || true
