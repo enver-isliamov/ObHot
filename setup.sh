@@ -111,4 +111,9 @@ if command -v x-ui >/dev/null 2>&1; then
   x-ui settings || x-ui setting -show || true
 fi
 
+echo "Генерация SSL сертификата..."
+systemctl stop nginx # Останавливаем Nginx, чтобы освободить 80 порт
+# ... здесь ваш код вызова acme.sh ...
+systemctl start nginx # Запускаем Nginx обратно
+
 echo "ГОТОВО! Ваш сайт-маскировка и VPN развернуты."
