@@ -75,7 +75,15 @@ fi
 
 x-ui start || true
 
+
+
 # 7. AdGuard Home (Автоматическая установка)
+echo "Освобождаем порт 53 для AdGuard Home..."
+systemctl stop systemd-resolved
+systemctl disable systemd-resolved
+rm -f /etc/resolv.conf
+echo 'nameserver 8.8.8.8' > /etc/resolv.conf
+echo 'nameserver 1.1.1.1' >> /etc/resolv.conf
 curl -s -S -L https://raw.githubusercontent.com/AdguardTeam/AdGuardHome/master/scripts/install.sh | sh -s -- -v -r
 
 # 8. Telegram MTProto Proxy (Docker)
