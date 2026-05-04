@@ -93,6 +93,16 @@ fi
 docker run -d --name mtproto -p 9443:443 -e SECRET=$(openssl rand -hex 16) -e TAG=proxy --restart always telegrammessenger/proxy:latest
 
 # 9. Firewall (Открываем порты)
+echo "Настраиваем правила UFW..."
+ufw --force enable
+ufw allow 80/tcp
+ufw allow 443/tcp
+ufw allow 443/udp
+ufw allow 2096/tcp # Порт для ссылок подписки
+# Порты для ваших Reality-подключений:
+ufw allow 2022,2053,2443/tcp
+ufw allow 2022,2053,2443/udp
+ufw reload
 ufw allow 22,80,443,2053,3000,8443,9443/tcp
 ufw --force enable
 
